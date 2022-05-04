@@ -7,7 +7,7 @@ public class Player : MonoBehaviour
 {
     [Header("Player Info")]
     public Sprite ProfileImage;
-    public string name;
+    public string nickname;
     public int level;
 
     [Space(10)]
@@ -19,13 +19,13 @@ public class Player : MonoBehaviour
     public void SetInformation(Sprite ProfileImage, string name, int level)
     {
         ProfileImageComponent.sprite = ProfileImage;
-        this.name = name;
+        this.nickname = name;
         this.level = level;
     }
 
     public void SetName(string name)
     {
-        this.name = name;
+        this.nickname = name;
     }
 
     public void SetLevel(int level)
