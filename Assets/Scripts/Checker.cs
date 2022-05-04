@@ -5,6 +5,7 @@ using Photon.Pun;
 using Photon.Realtime;
 using UnityEngine.Tilemaps;
 using UnityEngine.UI;
+using System.Threading;
 
 public struct Square
 {
@@ -12,15 +13,11 @@ public struct Square
     public string state; // 0: null, 1: white, 2: black
 }
 
-public enum SquareType
-{
-    whitePlayer, blackPlayer
-}
-
 public class Checker : MonoBehaviourPunCallbacks
 {
     [Header("BettleInfo")]
-    public bool playerColor;
+    public bool localPlayerColor;
+    public Player opponentPlayer;
 
     [Header("Map")]
     public Tilemap tilemap;
@@ -43,16 +40,28 @@ public class Checker : MonoBehaviourPunCallbacks
     public string chat;
     public InputField ChatInput;
 
+    [Header("Player")]
+    public GamePlayer player;
+
+    [Header("Notice")]
+    NoticeUI notice;
 
     void Awake()
     {
         PhotonNetwork.SendRate = 60;
         PhotonNetwork.SerializationRate = 30;
+
+        notice = FindObjectOfType<NoticeUI>();
     }
+
+    [Header("UI")]
+    public Text Alert;
 
     // Start is called before the first frame update
     void Start()
     {
+        notice.SUB("start");
+
         // 게임 버전 체크
         PhotonNetwork.GameVersion = Application.version;
 
@@ -60,6 +69,13 @@ public class Checker : MonoBehaviourPunCallbacks
         {
             CallUpdate();
         }
+
+        Connect();
+    }
+
+    public void Notice(string msg)
+    {
+        notice.SUB(msg);
     }
 
     // Update is called once per frame
@@ -74,9 +90,15 @@ public class Checker : MonoBehaviourPunCallbacks
 
     public void Connect() => PhotonNetwork.ConnectUsingSettings();
 
+    public void Disconnect() => PhotonNetwork.Disconnect();
+
     public void JoinLobby() => PhotonNetwork.JoinLobby();
 
+    public void LeaveLobby() => PhotonNetwork.LeaveLobby();
+
     public void JoinRoom() => PhotonNetwork.JoinRandomOrCreateRoom();
+
+    public void LeaveRoom() => PhotonNetwork.LeaveRoom();
 
     public void SendChat()
     {
@@ -106,26 +128,63 @@ public class Checker : MonoBehaviourPunCallbacks
 
     }
 
+    public override void OnLeftRoom()
+    {
+        localPlayerColor = true;
+    }
+
     public override void OnJoinedRoom()
     {
+        if (PhotonNetwork.PlayerList.Length != 2)
+        {
+            FindOpponentFailed();
+        }
+
         print("JoinedRoom: " + PhotonNetwork.CurrentRoom.Name);
     }
 
-    public override void OnPlayerEnteredRoom(Photon.Realtime.Player newPlayer)
+    public override void OnPlayerEnteredRoom(Player newPlayer)
     {
-        print("<" + PhotonNetwork.CurrentRoom.Name + ">" + " OtherPlayerJoined: " + newPlayer.NickName);
+        opponentPlayer = newPlayer;
+        print("<" + PhotonNetwork.CurrentRoom.Name + ">" + " OtherPlayerJoined: " + opponentPlayer.NickName);
+        PV.RPC("PlayerColor", opponentPlayer, PhotonNetwork.LocalPlayer, localPlayerColor);
+        PV.RPC("SendPlayerInformation", opponentPlayer, player);
     }
 
-    public override void OnPlayerLeftRoom(Photon.Realtime.Player otherPlayer)
+    public override void OnPlayerLeftRoom(Player otherPlayer)
     {
         print("<" + PhotonNetwork.CurrentRoom.Name + ">" + " OtherPlayerLeft: " + otherPlayer.NickName);
+
+        OpponentLeft();
     }
 
-    public void sendPlayerColor(Player sendPlayer, bool color)
+    [PunRPC]
+    public void PlayerColor(Player sendPlayer, bool color)
     {
         if (PhotonNetwork.LocalPlayer.Equals(sendPlayer)) return;
 
-        playerColor = !color;
+        localPlayerColor = !color;
+    }
+
+    [PunRPC]
+    public void SendPlayerInformation(GamePlayer opponentPlayerData)
+    {
+        setPlayerBoard(opponentPlayerData);
+    }
+
+    void setPlayerBoard(GamePlayer opponentPlayerData)
+    {
+
+    }
+
+    void FindOpponentFailed()
+    {
+        LeaveRoom();
+    }
+
+    void OpponentLeft()
+    {
+        LeaveRoom();
     }
 
     IEnumerator SetDefaultPlayerPosition()
@@ -178,7 +237,8 @@ public class Checker : MonoBehaviourPunCallbacks
         }
     }
     
-    void movePlayer(Vector2Int currentPos, Vector2Int nextPos)
+    [PunRPC]
+    public void movePlayer(Vector2Int currentPos, Vector2Int nextPos)
     {
         // 타일 거져오기
         TileBase tile = tilemap.GetTile((Vector3Int)currentPos);
