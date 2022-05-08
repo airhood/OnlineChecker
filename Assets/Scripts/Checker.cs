@@ -19,6 +19,8 @@ public class Checker : MonoBehaviourPunCallbacks
     public bool localPlayerColor;
     public Player opponentPlayer;
 
+    public GamePlayer opponentGamePlayer;
+
     [Header("Map")]
     public Tilemap tilemap;
 
@@ -41,10 +43,16 @@ public class Checker : MonoBehaviourPunCallbacks
     public InputField ChatInput;
 
     [Header("Player")]
-    public GamePlayer player;
+    public GamePlayer gamePlayer;
 
     [Header("Notice")]
     NoticeUI notice;
+
+    [Header("Loading")]
+    public Animator loadingAnimator;
+
+    bool isWaitingOpponent;
+    float opponentWaitTime;
 
     void Awake()
     {
@@ -53,9 +61,6 @@ public class Checker : MonoBehaviourPunCallbacks
 
         notice = FindObjectOfType<NoticeUI>();
     }
-
-    [Header("UI")]
-    public Text Alert;
 
     // Start is called before the first frame update
     void Start()
@@ -85,6 +90,19 @@ public class Checker : MonoBehaviourPunCallbacks
         if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter))
         {
             SendChat();
+        }
+
+        if (isWaitingOpponent)
+        {
+            opponentWaitTime += Time.deltaTime;
+
+            if (opponentWaitTime >= 5)
+            {
+                isWaitingOpponent = false;
+                opponentWaitTime = 0;
+
+                FindOpponentFailed();
+            }
         }
     }
 
@@ -125,7 +143,7 @@ public class Checker : MonoBehaviourPunCallbacks
 
     public override void OnCreatedRoom()
     {
-
+        isWaitingOpponent = true;
     }
 
     public override void OnLeftRoom()
@@ -135,12 +153,15 @@ public class Checker : MonoBehaviourPunCallbacks
 
     public override void OnJoinedRoom()
     {
+        // this will never happen because the max player is set to 2 player so,
+        // none of the players can join a room that has 0 player.
+        // But in case of bugs, I will not erase this statement.
         if (PhotonNetwork.PlayerList.Length != 2)
         {
             FindOpponentFailed();
         }
 
-        print("JoinedRoom: " + PhotonNetwork.CurrentRoom.Name);
+        print("JoinedRoom <" + PhotonNetwork.CurrentRoom.Name + ">: No Opponent");
     }
 
     public override void OnPlayerEnteredRoom(Player newPlayer)
@@ -148,7 +169,7 @@ public class Checker : MonoBehaviourPunCallbacks
         opponentPlayer = newPlayer;
         print("<" + PhotonNetwork.CurrentRoom.Name + ">" + " OtherPlayerJoined: " + opponentPlayer.NickName);
         PV.RPC("PlayerColor", opponentPlayer, PhotonNetwork.LocalPlayer, localPlayerColor);
-        PV.RPC("SendPlayerInformation", opponentPlayer, player);
+        PV.RPC("SendPlayerInformation", opponentPlayer, PhotonNetwork.LocalPlayer,gamePlayer);
     }
 
     public override void OnPlayerLeftRoom(Player otherPlayer)
@@ -167,24 +188,39 @@ public class Checker : MonoBehaviourPunCallbacks
     }
 
     [PunRPC]
-    public void SendPlayerInformation(GamePlayer opponentPlayerData)
+    public void SendPlayerInformation(Player sendPlayer,GamePlayer opponentPlayerData)
     {
+        if (PhotonNetwork.LocalPlayer == sendPlayer) return;
+
         setPlayerBoard(opponentPlayerData);
     }
 
     void setPlayerBoard(GamePlayer opponentPlayerData)
     {
+        opponentGamePlayer.Set(opponentPlayerData, true);
+    }
 
+    public void FindOpponent()
+    {
+        JoinRoom();
     }
 
     void FindOpponentFailed()
     {
         LeaveRoom();
+
+        print("Find room failed");
+
+        notice.SUB("Find opponent failed. Try later");
     }
 
     void OpponentLeft()
     {
         LeaveRoom();
+
+        print("Opponent Left: No Opponent");
+
+        notice.SUB("Find opponent failed. Try later");
     }
 
     IEnumerator SetDefaultPlayerPosition()
@@ -258,5 +294,15 @@ public class Checker : MonoBehaviourPunCallbacks
     void CallUpdate()
     {
 
+    }
+
+    void ShowLoadingSign()
+    {
+        loadingAnimator.SetTrigger("loading");
+    }
+
+    void StopLoadingSign()
+    {
+        loadingAnimator.SetTrigger("endloading");
     }
 }
