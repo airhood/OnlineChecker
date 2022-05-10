@@ -5435,20 +5435,45 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   localPlayerColor: 0
-  opponentGamePlayer: {fileID: 0}
-  tilemap: {fileID: 0}
+  opponentGamePlayer: {fileID: 715691329}
+  tilemap: {fileID: 904072025}
   tiles:
   - {fileID: 11400000, guid: 82ae46ac5dfad5f429a65763f6b76116, type: 2}
   - {fileID: 11400000, guid: 47e319f0c7a670843908d12a31ebb4d8, type: 2}
-  Grid: {fileID: 0}
-  DefaultWhitePosition: []
-  DefaultBlackPosition: []
+  Grid: {fileID: 309285043}
+  DefaultWhitePosition:
+  - {x: -4, y: 4}
+  - {x: -2, y: 4}
+  - {x: 1, y: 4}
+  - {x: 3, y: 4}
+  - {x: -3, y: 3}
+  - {x: -1, y: 3}
+  - {x: 2, y: 3}
+  - {x: 4, y: 3}
+  - {x: -4, y: 2}
+  - {x: -2, y: 2}
+  - {x: 1, y: 2}
+  - {x: 3, y: 2}
+  DefaultBlackPosition:
+  - {x: -3, y: -4}
+  - {x: -1, y: -4}
+  - {x: 2, y: -4}
+  - {x: 4, y: -4}
+  - {x: -4, y: -3}
+  - {x: -2, y: -3}
+  - {x: 1, y: -3}
+  - {x: 3, y: -3}
+  - {x: -3, y: -2}
+  - {x: -1, y: -2}
+  - {x: 2, y: -2}
+  - {x: 4, y: -2}
   PV: {fileID: 975647228}
+  maxOpponentWaitTime: 7
   chatObject: {fileID: 386120148}
   chat: 
   ChatInput: {fileID: 1089116126}
-  gamePlayer: {fileID: 0}
-  loadingAnimator: {fileID: 0}
+  gamePlayer: {fileID: 115017703}
+  loadingAnimator: {fileID: 1112359720}
 --- !u!114 &975647228
 MonoBehaviour:
   m_ObjectHideFlags: 0

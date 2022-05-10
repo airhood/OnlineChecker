@@ -6,11 +6,24 @@ using Photon.Realtime;
 using UnityEngine.Tilemaps;
 using UnityEngine.UI;
 using System.Threading;
+using Unity.RemoteConfig;
+
+public enum GameUpdate
+{
+    NoUpdate, RequiredUpdate, NonRequiredUpdate
+}
 
 public struct Square
 {
     public bool color;
     public string state; // 0: null, 1: white, 2: black
+}
+
+public struct Version
+{
+    public int versionKey;
+    public string versionCode;
+    public bool required;
 }
 
 public class Checker : MonoBehaviourPunCallbacks
@@ -36,6 +49,7 @@ public class Checker : MonoBehaviourPunCallbacks
 
     [Header("Photon")]
     public PhotonView PV;
+    public float maxOpponentWaitTime = 7.0f;
 
     [Header("Chat")]
     public Text chatObject;
@@ -54,8 +68,14 @@ public class Checker : MonoBehaviourPunCallbacks
     bool isWaitingOpponent;
     float opponentWaitTime;
 
+
+    public struct userAttributes { }
+    public struct appAttributes { }
+
     void Awake()
     {
+        ConfigManager.FetchConfigs<userAttributes, appAttributes>(new userAttributes(), new appAttributes());
+
         PhotonNetwork.SendRate = 60;
         PhotonNetwork.SerializationRate = 30;
 
@@ -70,12 +90,20 @@ public class Checker : MonoBehaviourPunCallbacks
         // 게임 버전 체크
         PhotonNetwork.GameVersion = Application.version;
 
-        if (!CheckVersion(PhotonNetwork.GameVersion))
-        {
-            CallUpdate();
-        }
+        Version version = new Version();
 
-        Connect();
+        version.versionKey = int.Parse(Application.version);
+        version.versionCode = "Dec 0.1";
+
+        switch (CheckVersion(version))
+        {
+            case GameUpdate.NoUpdate:
+                break;
+            case GameUpdate.RequiredUpdate:
+                break;
+            case GameUpdate.NonRequiredUpdate:
+                break;
+        }
     }
 
     public void Notice(string msg)
@@ -96,7 +124,7 @@ public class Checker : MonoBehaviourPunCallbacks
         {
             opponentWaitTime += Time.deltaTime;
 
-            if (opponentWaitTime >= 5)
+            if (opponentWaitTime >= maxOpponentWaitTime)
             {
                 isWaitingOpponent = false;
                 opponentWaitTime = 0;
@@ -286,14 +314,36 @@ public class Checker : MonoBehaviourPunCallbacks
         tilemap.SetTile((Vector3Int)nextPos, tile);
     }
 
-    bool CheckVersion(string version)
+    GameUpdate CheckVersion(Version version)
     {
-        return true;
+        Version newVersion = GetNewVersion();
+        if (newVersion.Equals(version))
+        {
+            return GameUpdate.NoUpdate;
+        } else
+        {
+            if (newVersion.required)
+            {
+                return GameUpdate.RequiredUpdate;
+            }
+            return GameUpdate.NonRequiredUpdate;
+        }
     }
 
     void CallUpdate()
     {
 
+    }
+
+    Version GetNewVersion()
+    {
+        Version newVersion;
+
+        newVersion.versionKey = ConfigManager.appConfig.GetInt("gameVersionKey");
+        newVersion.versionCode = ConfigManager.appConfig.GetString("gameVersionCode");
+        newVersion.required = ConfigManager.appConfig.GetBool("isRequiredUpdate");
+
+        return newVersion;
     }
 
     void ShowLoadingSign()
@@ -304,5 +354,20 @@ public class Checker : MonoBehaviourPunCallbacks
     void StopLoadingSign()
     {
         loadingAnimator.SetTrigger("endloading");
+    }
+
+    public void ShowPopUpScreen()
+    {
+
+    }
+
+    void OnChatArrived()
+    {
+
+    }
+
+    public void PlaySound()
+    {
+
     }
 }
