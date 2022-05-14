@@ -5,6 +5,8 @@ using UnityEngine.UI;
 
 public class NoticeUI : MonoBehaviour
 {
+    public static bool isShowing = false;
+
     [Header("SubNotice")]
     public GameObject subbox;
     public Text subintext;
@@ -27,6 +29,7 @@ public class NoticeUI : MonoBehaviour
 
     public void SUB(string message)
     {
+        isShowing = true;
         subintext.text = message;
         subbox.SetActive(true);
         StopAllCoroutines();
@@ -41,5 +44,6 @@ public class NoticeUI : MonoBehaviour
         subani.SetBool("isOn", false);
         yield return _UIDelay2;
         subbox.SetActive(false);
+        isShowing = false;
     }
 }

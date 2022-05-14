@@ -5,25 +5,24 @@ using Photon.Pun;
 using Photon.Realtime;
 using UnityEngine.Tilemaps;
 using UnityEngine.UI;
-using System.Threading;
 using Unity.RemoteConfig;
+using System.Diagnostics;
 
 public enum GameUpdate
 {
-    NoUpdate, RequiredUpdate, NonRequiredUpdate
+    NoUpdate, RequiredUpdate, NonRequiredUpdate, Error
 }
 
-public struct Square
+public enum Square
 {
-    public bool color;
-    public string state; // 0: null, 1: white, 2: black
+    none, white, black
 }
 
 public struct Version
 {
     public int versionKey;
     public string versionCode;
-    public bool required;
+    public bool requiredUpdate;
 }
 
 public class Checker : MonoBehaviourPunCallbacks
@@ -60,13 +59,25 @@ public class Checker : MonoBehaviourPunCallbacks
     public GamePlayer gamePlayer;
 
     [Header("Notice")]
-    NoticeUI notice;
+    public NoticeUI notice;
 
     [Header("Loading")]
     public Animator loadingAnimator;
 
     bool isWaitingOpponent;
     float opponentWaitTime;
+
+    [Header("Screens/Panels")]
+    public GameObject LoadingScreen;
+    public GameObject TitleScreen;
+    public GameObject FindOpponentScreen;
+    public GameObject GameScreen;
+
+    [Header("Game")]
+    public int versionKey = 1;
+
+
+    Square[,] map = new Square[8, 8];
 
 
     public struct userAttributes { }
@@ -80,30 +91,37 @@ public class Checker : MonoBehaviourPunCallbacks
         PhotonNetwork.SerializationRate = 30;
 
         notice = FindObjectOfType<NoticeUI>();
-    }
 
-    // Start is called before the first frame update
-    void Start()
-    {
-        notice.SUB("start");
-
+        /*
         // 게임 버전 체크
         PhotonNetwork.GameVersion = Application.version;
 
         Version version = new Version();
 
-        version.versionKey = int.Parse(Application.version);
-        version.versionCode = "Dec 0.1";
+        version.versionCode = Application.version;
+        version.versionKey = versionKey;
 
         switch (CheckVersion(version))
         {
             case GameUpdate.NoUpdate:
                 break;
             case GameUpdate.RequiredUpdate:
+                CallUpdate();
                 break;
             case GameUpdate.NonRequiredUpdate:
+                AskForUpdate(GetNewVersion());
                 break;
         }
+        */
+
+        print(Application.dataPath);
+        notice.SUB(Application.dataPath);
+    }
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        notice.SUB("start");
     }
 
     public void Notice(string msg)
@@ -132,6 +150,8 @@ public class Checker : MonoBehaviourPunCallbacks
                 FindOpponentFailed();
             }
         }
+
+        notice.SUB(Application.dataPath);
     }
 
     public void Connect() => PhotonNetwork.ConnectUsingSettings();
@@ -148,14 +168,19 @@ public class Checker : MonoBehaviourPunCallbacks
 
     public void SendChat()
     {
-        PV.RPC("ChatCall", RpcTarget.All, ChatInput.text.Replace("\n", string.Empty));
+        PV.RPC("ChatCall", RpcTarget.All, PhotonNetwork.LocalPlayer, gamePlayer, ChatInput.text.Replace("\n", string.Empty));
     }
 
     [PunRPC]
-    public void ChatCall(string msg)
+    public void ChatCall(Player sendPlayer, GamePlayer sendGamePlayer, string msg)
     {
         chat += "\n" + msg;
         chatObject.text = chat;
+
+        if (!sendPlayer.Equals(PhotonNetwork.LocalPlayer))
+        {
+            OnChatArrived(sendPlayer, sendGamePlayer, msg);
+        }
     }
 
     public override void OnConnectedToMaster()
@@ -299,6 +324,10 @@ public class Checker : MonoBehaviourPunCallbacks
         {
             tilemap.SetTile((Vector3Int)pos, tile);
         }
+        else
+        {
+            tilemap.SetTile((Vector3Int)pos, null);
+        }
     }
     
     [PunRPC]
@@ -309,9 +338,12 @@ public class Checker : MonoBehaviourPunCallbacks
 
         // 타일 삭제
         tilemap.SetTile((Vector3Int)currentPos, null);
+        Square temp = map[currentPos.x, currentPos.y];
+        map[currentPos.x, currentPos.y] = Square.none;
 
         // 새롭게 타일 생성
         tilemap.SetTile((Vector3Int)nextPos, tile);
+        map[nextPos.x, nextPos.y] = temp;
     }
 
     GameUpdate CheckVersion(Version version)
@@ -322,15 +354,26 @@ public class Checker : MonoBehaviourPunCallbacks
             return GameUpdate.NoUpdate;
         } else
         {
-            if (newVersion.required)
+            if (version.versionKey < newVersion.versionKey)
             {
-                return GameUpdate.RequiredUpdate;
+                if (newVersion.requiredUpdate)
+                {
+                    return GameUpdate.RequiredUpdate;
+                }
+                return GameUpdate.NonRequiredUpdate;
             }
-            return GameUpdate.NonRequiredUpdate;
+            return GameUpdate.Error;
         }
     }
 
     void CallUpdate()
+    {
+        notice.SUB("There is new update. Start updating... (Game will quit)");
+        string path = Application.dataPath + "/../GameUpdater.exe";
+        Process.Start(path);
+    }
+
+    void AskForUpdate(Version version)
     {
 
     }
@@ -341,17 +384,17 @@ public class Checker : MonoBehaviourPunCallbacks
 
         newVersion.versionKey = ConfigManager.appConfig.GetInt("gameVersionKey");
         newVersion.versionCode = ConfigManager.appConfig.GetString("gameVersionCode");
-        newVersion.required = ConfigManager.appConfig.GetBool("isRequiredUpdate");
+        newVersion.requiredUpdate = ConfigManager.appConfig.GetBool("isRequiredUpdate");
 
         return newVersion;
     }
 
-    void ShowLoadingSign()
+    public void ShowLoadingSign()
     {
         loadingAnimator.SetTrigger("loading");
     }
 
-    void StopLoadingSign()
+    public void StopLoadingSign()
     {
         loadingAnimator.SetTrigger("endloading");
     }
@@ -361,13 +404,49 @@ public class Checker : MonoBehaviourPunCallbacks
 
     }
 
-    void OnChatArrived()
+    void OnChatArrived(Player sendPlayer, GamePlayer sendGamePlayer, string msg)
+    {
+        // play sound ex)띨롱
+    }
+
+    public void SetScreenState(string name, bool state)
+    {
+        GameObject[] searchResult = GameObject.FindGameObjectsWithTag("Screen");
+
+        foreach (GameObject screen in searchResult)
+        {
+            if (screen.name == name)
+            {
+                screen.SetActive(state);
+            }
+        }
+    }
+
+    public void SetScreen(string name)
+    {
+        GameObject[] searchResult = GameObject.FindGameObjectsWithTag("Screen");
+
+        foreach (GameObject screen in searchResult)
+        {
+            if (screen.name != name)
+            {
+                screen.SetActive(false);
+            }
+            else
+            {
+                screen.SetActive(true);
+            }
+        }
+    }
+
+    private void OnApplicationPause(bool pause)
     {
 
     }
 
-    public void PlaySound()
+    [System.Obsolete]
+    private void OnApplicationQuit()
     {
-
+        Application.CancelQuit();
     }
 }
