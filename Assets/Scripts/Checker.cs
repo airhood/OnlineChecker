@@ -92,7 +92,7 @@ public class Checker : MonoBehaviourPunCallbacks
 
         notice = FindObjectOfType<NoticeUI>();
 
-        /*
+        
         // 게임 버전 체크
         PhotonNetwork.GameVersion = Application.version;
 
@@ -112,10 +112,8 @@ public class Checker : MonoBehaviourPunCallbacks
                 AskForUpdate(GetNewVersion());
                 break;
         }
-        */
 
-        print(Application.dataPath);
-        notice.SUB(Application.dataPath);
+        print("Datapath: " + Application.dataPath);
     }
 
     // Start is called before the first frame update
@@ -371,6 +369,7 @@ public class Checker : MonoBehaviourPunCallbacks
         notice.SUB("There is new update. Start updating... (Game will quit)");
         string path = Application.dataPath + "/../GameUpdater.exe";
         Process.Start(path);
+        Application.Quit();
     }
 
     void AskForUpdate(Version version)
@@ -447,6 +446,6 @@ public class Checker : MonoBehaviourPunCallbacks
     [System.Obsolete]
     private void OnApplicationQuit()
     {
-        Application.CancelQuit();
+
     }
 }
