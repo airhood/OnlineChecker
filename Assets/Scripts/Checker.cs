@@ -89,10 +89,15 @@ public class Checker : MonoBehaviourPunCallbacks
 
         PhotonNetwork.SendRate = 60;
         PhotonNetwork.SerializationRate = 30;
+    }
 
+    // Start is called before the first frame update
+    void Start()
+    {
         notice = FindObjectOfType<NoticeUI>();
 
-        
+        notice.SUB("start");
+
         // 게임 버전 체크
         PhotonNetwork.GameVersion = Application.version;
 
@@ -114,12 +119,6 @@ public class Checker : MonoBehaviourPunCallbacks
         }
 
         print("Datapath: " + Application.dataPath);
-    }
-
-    // Start is called before the first frame update
-    void Start()
-    {
-        notice.SUB("start");
     }
 
     public void Notice(string msg)
@@ -281,7 +280,7 @@ public class Checker : MonoBehaviourPunCallbacks
             setPlayer(DefaultWhitePosition[i], true, true);
         }
 
-        for (int i = 0; i < DefaultBlackPosition.Count; i++)
+        for(int i = 0; i < DefaultBlackPosition.Count; i++)
         {
             setPlayer(DefaultBlackPosition[i], false, true);
         }
@@ -297,7 +296,7 @@ public class Checker : MonoBehaviourPunCallbacks
 
         for(int x = -4; x < 5; x++)
         {
-            for (int y = -4; y < 5; y++)
+            for(int y = -4; y < 5; y++)
             {
                 if (x != 0 && y != 0)
                 {
